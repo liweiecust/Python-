@@ -1,0 +1,2 @@
+{'warning': '00000000000000000000000000000000', 'override': 0, 'liftingCapacity': 3.37, 'safeLiftingCapacity': 18.44, 'ratedMoment': 23.2, 'momentPercent':
+    79.46, 'amplitude': 0.72, 'round': 196.14, 'height': 137.32, 'dipAngleX': 69.54, 'dipAngleY': 97.26, 'windSpeed': 0.27, 'driverId': '370213197907099159', 'driverName': '司勇', 'needWarning': False, 'dataId': '89b8dfba7d8b45f0afd876ed67897fbc', 'projectSysNo': 10078, 'deviceId': '201811201952', 'deviceTime': datetime.datetime(2020, 10, 28, 11, 33, 9, 838568)}

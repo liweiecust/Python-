@@ -1,0 +1,150 @@
+设备库统计
+https://ibuild.yzw.cn/api/open/admin/productDevice/statistics
+
+
+sp_product_device 设备表 
+    Formal: 0 - 正式设备 1 - 测试设备
+
+sp_product 产品表
+sp_supplier_certification 供应商表
+sp_product_device_status 设备状态表 
+    onlineStatus: 0 - 离线 1 - 在线
+
+
+<select id="countProductDeviceStatus"
+            resultType="com.yzw.ibuild.open.portal.platform.vo.productmgt.ProductDeviceStatisticsQueryResult">
+        SELECT
+        IFNULL(SUM(CASE WHEN t.Formal = 1
+        THEN 1
+        ELSE 0 END),0) formalCount,
+        IFNULL(SUM(CASE WHEN t.Formal = 2
+        THEN 1
+        ELSE 0 END),0) inFormalCount,
+        IFNULL(SUM(CASE WHEN t.ActivateStatus = 0
+        THEN 1
+        ELSE 0 END),0) notActiveCount,
+        IFNULL(SUM(CASE WHEN t.ActivateStatus = 1
+        THEN 1
+        ELSE 0 END),0) activeCount,
+        IFNULL(SUM(CASE WHEN t2.OnlineStatus = 1
+        THEN 1
+        ELSE 0 END),0) onlineCount,
+        IFNULL(SUM(CASE WHEN t2.OnlineStatus = 0
+        THEN 1
+        ELSE 0 END),0) offlineCount
+        FROM
+        sp_product_device t
+        INNER JOIN sp_product t1 ON t.ProductSysNo = t1.SysNo
+        AND t1.CommonStatus = 1
+        INNER JOIN sp_supplier_certification t3 ON t3.SupplierSysNo = t1.SupplierSysNo
+        AND t3.CommonStatus = 1
+        LEFT JOIN sp_product_device_status t2 ON t.SysNo = t2.DeviceSysNo AND t2.DataType = 1
+        <where>
+            <if test="projectSysNo != null  and projectSysNo != '' ">
+                and t.ProjectSysNo = #{projectSysNo}
+            </if>
+            <if test="activateStatus != null  and activateStatus.value != null ">
+                and t.ActivateStatus = #{activateStatus.value}
+            </if>
+            <if test="deviceName != null  and deviceName != '' ">
+                and t.DeviceName LIKE CONCAT('%',#{deviceName},'%')
+            </if>
+            <if test="supplierSysNo != null">
+                and t1.SupplierSysNo = #{supplierSysNo}
+            </if>
+            <if test="catalogCode != null and catalogCode != ''">
+                AND t1.CatalogCode = #{catalogCode}
+            </if>
+            <if test="onlineStatus != null ">
+                AND t2.OnlineStatus = #{onlineStatus}
+            </if>
+            AND t.CommonStatus = 1
+        </where>
+    </select>
+
+设备列表
+https://ibuild.yzw.cn/api/open/admin/productDevice/list
+<select id="pageListProductDevice"
+            parameterType="com.yzw.ibuild.open.portal.platform.vo.productmgt.ProductDeviceQuery"
+            resultType="com.yzw.ibuild.open.portal.platform.vo.productmgt.ProductDeviceQueryResult">
+        SELECT
+        t.SysNo,
+        t.DeviceName,
+        t.DeviceCode,
+        t.Formal,
+        t.ActivateStatus,
+        t.ActivateTime,
+        t.ProjectSysNo,
+        t1.OnShelfStatus AS AuditStatus,
+        t1.SysNo AS ProductSysNo,
+        t1.ProductName,
+        t1.SupplierSysNo,
+        t2.FirstUploadTime,
+        t2.LastUploadTime,
+        t2.OnlineStatus,
+        t3.ShortName supplierName,
+        t3.HardwareAuthType
+        FROM
+        sp_product_device t
+        INNER JOIN sp_product t1 ON t.ProductSysNo = t1.SysNo
+        AND t1.CommonStatus = 1
+        LEFT JOIN sp_product_device_status t2 ON t.SysNo = t2.deviceSysNo AND t2.DataType = 1 AND t.ProjectSysNo = t2.ProjectSysNo
+        INNER JOIN sp_supplier_certification t3 ON t3.SupplierSysNo = t1.SupplierSysNo
+        AND t3.CommonStatus = 1
+        <where>
+            <if test="sysNo != null  and sysNo != '' ">
+                and t.SysNo = #{sysNo}
+            </if>
+            <if test="productSysNo != null  and productSysNo != '' ">
+                and t.ProductSysNo = #{productSysNo}
+            </if>
+            <if test="formal != null  and formal.value != null ">
+                and t.Formal = #{formal.value}
+            </if>
+            <if test="null != keyword and '' != keyword.trim()">
+                and (t.DeviceCode LIKE CONCAT('%',#{keyword},'%') or t.DeviceName LIKE CONCAT('%',#{keyword},'%'))
+            </if>
+            <if test="deviceCode != null  and deviceCode != '' ">
+                and t.DeviceCode = #{deviceCode}
+            </if>
+            <if test="deviceName != null  and deviceName != '' ">
+                and t.DeviceName LIKE CONCAT('%',#{deviceName},'%')
+            </if>
+            <if test="projectSysNo != null  and projectSysNo != '' ">
+                and t.ProjectSysNo = #{projectSysNo}
+            </if>
+            <if test="activateStatus != null  and activateStatus.value != null ">
+                and t.ActivateStatus = #{activateStatus.value}
+            </if>
+            <if test="supplierSysNo != null">
+                and t1.SupplierSysNo = #{supplierSysNo}
+            </if>
+            <if test="catalogCode != null and catalogCode != ''">
+                AND t1.CatalogCode = #{catalogCode}
+            </if>
+            <if test="onlineStatus != null ">
+                AND t2.OnlineStatus = #{onlineStatus}
+            </if>
+            and t.CommonStatus = 1
+        </where>
+        ORDER BY
+        t.Formal DESC,
+        (
+        CASE
+        WHEN t.Formal = 2 THEN
+        t.InDate
+        ELSE
+        NULL
+        END
+        ) DESC,
+        t.ActivateStatus ASC,
+        (
+        CASE
+        WHEN t.ActivateStatus = 1 THEN
+        t.ActivateTime
+        ELSE
+        t.InDate
+        END
+        ) DESC
+        limit #{offset},#{pageSize}
+    </select>

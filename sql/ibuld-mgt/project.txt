@@ -1,0 +1,221 @@
+项目中心
+
+项目中心的项目统计:
+    组织作为总承包单位参与的项目
+    组织作为分包单位参与的项目
+
+这与国内企业大屏的项目统计是不同的
+国内企业大屏：
+    只统计组织作为总承包单位参与的项目
+--------------------------------------------------
+https://ibuild.yzw.cn/api/project/queryProject
+
+
+RequestPayload
+{areaCode:null, expandIntelliApp: true, followOrganizationCode: "0001", onlyImportant: false,…}
+    appSysNo: null
+    areaCode: null
+    expandIntelliApp: true
+    followOrganizationCode: "0001"
+    isInternal: null
+    onlyImportant: false
+    orderBy: "project.projectLevel DESC, project.SortIndex DESC, project.SysNo DESC"
+    overseaCountryCode: null
+    pageNum: 1
+    pageSize: 10
+    projectStatus: 1
+    relationship: 2
+    searchKeyword: "
+
+
+
+---------------------------------------------
+project 项目表
+    ProjectStatus 0 - 竣工  1 - 在建 2 - 停工 
+    IsInternal`   1-境内 2-境外',
+    BigScreenAccess 是否大屏接入，0-默认未接入，1-国内大屏接入，2-国外大屏接入',
+    MdmProjectCode 财务项目编号'
+    OrganizationSysNo 项目所属组织系统编号 
+    OrganizationCode 项目所属组织
+    ConstructionOrganizationSysNo 项目总承包单位系统编号
+    ConstructionOrganizationCode 项目总承包单位编号
+
+systemorganization 组织表
+systemarea 区域表
+project_sort 项目排序表（页面展示排序）
+project_excellent 优秀项目轮播表
+
+<select id="queryProject" resultType="ProjectEntity">
+        SELECT
+        project.SysNo,
+        project.ProjectCode,
+        project.ProjectName,
+        project.ProjectShortName,
+        project.PinYin,
+        project.ProjectDescription,
+        project.ProjectCategory,
+        project.OrganizationSysNo,
+        project.OrganizationCode,
+        project.ConstructionOrganizationSysNo,
+        project.ConstructionOrganizationCode,
+        project.WorkUnit,
+        project.AreaSysNo,
+        project.ConstructionSites,
+        project.LocationX,
+        project.LocationY,
+        project.TotalContractAmt,
+        project.BuildingVolume,
+        project.BuildingVolume projectArea,
+        project.BuildingVolumeType,
+        project.BuildingVolumeUnit,
+        project.StartDate,
+        project.PlanCompleteDate,
+        project.CoverImageUrl,
+        project.CommonStatus,
+        project.AuditStatus,
+        project.AuditMemo,
+        project.ProjectStatus,
+        project.ProjectLevel,
+        project.AppSecret,
+        project.InUserSysNo,
+        project.InUserName,
+        project.InDate,
+        project.EditUserSysNo,
+        project.EditUserName,
+        project.EditDate,
+        project.SystemProjectSysNo,
+        project.IsInternal,
+        project.OverseasProjectCategory,
+        project.MdmProjectCode,
+        org.OrganizationName,
+        constructOrg.OrganizationName as ConstructionOrganizationName,
+        district.AreaCode as DistrictCode,
+        district.AreaName as DistrictName,
+        city.AreaCode as CityCode,
+        city.AreaName as CityName,
+        province.AreaCode as ProvinceCode,
+        province.AreaName as ProvinceName,
+        psort.SortIndex as OrgSortIndex,
+        IF(ISNULL(psort.SortIndex),project.ProjectLevel,0) as SortLevel,
+        IF(ISNULL(psort.SortIndex),project.SortIndex,0) as SortNumber,
+        IF(ISNULL(pExcellent.SysNo),0,1) as excellent
+        <if test="userSysNo != null and userSysNo > 0">
+            , IF (
+            EXISTS (
+            SELECT 1 FROM `userproject` AS up
+            WHERE up.ProjectSysNo = project.SysNo AND up.Status = 1 AND up.UserSysNo = #{userSysNo} LIMIT 1), TRUE,
+            FALSE ) AS userInProject
+        </if>
+        <choose>
+            <when test="userSysNo != null and userSysNo > 0">
+                , IF (
+                EXISTS (
+                SELECT 1 FROM `userfavoriteproject` AS ufp
+                WHERE ufp.ProjectSysNo = project.SysNo AND ufp.Status = 1 AND ufp.UserSysNo = #{userSysNo} LIMIT 1),
+                TRUE, FALSE ) AS userInFavorite
+            </when>
+            <otherwise>
+                ,FALSE AS userInFavorite
+            </otherwise>
+        </choose>
+        FROM yz_ibuild.`project` AS project
+        INNER JOIN yz_ibuild.systemorganization as org on project.OrganizationSysNo=org.SysNo
+        LEFT JOIN yz_ibuild.systemorganization as constructOrg on
+        project.ConstructionOrganizationSysNo=constructOrg.SysNo
+        LEFT JOIN yz_ibuild.systemarea as district on project.AreaSysNo=district.SysNo AND district.CommonStatus = 1
+        LEFT JOIN yz_ibuild.systemarea as city on district.ParentSysNo=city.SysNo AND city.CommonStatus = 1
+        LEFT JOIN yz_ibuild.systemarea as province on city.ParentSysNo=province.SysNo AND province.CommonStatus = 1
+        LEFT JOIN yz_ibuild.project_sort as psort on project.SysNo=psort.ProjectSysNo AND
+        psort.OrganizationCode=#{userOrganizationCode}
+        LEFT JOIN yz_ibuild.project_excellent as pExcellent on project.SysNo=pExcellent.ProjectSysNo
+        WHERE
+        project.CommonStatus = 1
+        <if test="isInternal != null">
+            AND project.isInternal = #{isInternal}
+        </if>
+        <if test="2 == isInternal and overseaCountryCode != null and overseaCountryCode != ''">
+            AND project.Country like (SELECT CONCAT(country.Name, '%') FROM yz_ibuild.cscec_big_screen_oversea_country AS country where country.code = #{overseaCountryCode})
+        </if>
+        <if test="projectStatus != null">
+            AND project.ProjectStatus = #{projectStatus}
+        </if>
+
+        <if test="sysNo != null">
+            AND project.SysNo = #{sysNo}
+        </if>
+        <if test="searchKeyword != null and searchKeyword.trim() != ''">
+            AND project.ProjectName LIKE CONCAT('%', #{searchKeyword}, '%')
+        </if>
+
+        <if test="areaCode != null and areaCode.trim() != ''">
+            AND district.AreaCode LIKE CONCAT(#{areaCode}, '%')
+        </if>
+        <if test="appSysNo != null ">
+            AND EXISTS (SELECT 1 FROM yz_ibuild.projectIntelliapp as app WHERE project.SysNo = app.ProjectSysNo AND
+            app.appSysNo = #{appSysNo} AND app.status=1 )
+        </if>
+        <if test="startDateBegin != null">
+            AND project.StartDate &gt;= #{startDateBegin}
+        </if>
+        <if test="startDateEnd != null">
+            AND project.StartDate &lt;= #{startDateEnd}
+        </if>
+        <if test="onlyImportant == true">
+            AND project.ProjectLevel &gt;= 1
+        </if>
+        <if test="excludedProjects != null">
+            <foreach collection="excludedProjects" item="item" separator="," open=" AND project.SysNo NOT IN ("
+                     close=")">
+                #{item}
+            </foreach>
+        </if>
+        AND (
+        EXISTS (SELECT 1 FROM yz_ibuild.`userproject` AS up
+        WHERE up.ProjectSysNo = project.SysNo AND up.Status = 1 AND up.UserSysNo = #{userSysNo} LIMIT 1)
+
+        OR EXISTS (SELECT 1 FROM yz_ibuild.`ProjectOrganizationRelation` AS por
+        WHERE por.ProjectSysNo = project.SysNo AND por.Status = 1
+        <if test="userOrganizationCode != null and userOrganizationCode.trim() != ''">
+            AND por.OrganizationCode LIKE CONCAT(#{userOrganizationCode},'%')
+        </if>
+        <if test="relationship != null and relationship.getValue().equals(0) and followOrganizationCode != null and followOrganizationCode.trim() != ''">
+            AND (por.OrganizationCode = #{followOrganizationCode})
+        </if>
+        <if test="relationship != null and relationship.getValue().equals(1) and followOrganizationCode != null and followOrganizationCode.trim() != ''">
+            AND (por.OrganizationCode LIKE CONCAT(#{followOrganizationCode}, '%') AND por.OrganizationCode &lt;&gt;
+            #{followOrganizationCode})
+        </if>
+        <if test="relationship != null and relationship.getValue().equals(2) and followOrganizationCode != null and followOrganizationCode.trim() != ''">
+            AND por.OrganizationCode LIKE CONCAT(#{followOrganizationCode}, '%')
+        </if>
+        LIMIT 1)
+
+        OR (
+        1=1
+        <if test="userOrganizationCode != null and userOrganizationCode.trim() != ''">
+            AND project.OrganizationCode LIKE CONCAT(#{userOrganizationCode}, '%')
+        </if>
+        <if test="relationship != null and relationship.getValue().equals(0) and followOrganizationCode != null and followOrganizationCode.trim() != ''">
+            AND (project.OrganizationCode = #{followOrganizationCode})
+        </if>
+        <if test="relationship != null and relationship.getValue().equals(1) and followOrganizationCode != null and followOrganizationCode.trim() != ''">
+            AND (project.OrganizationCode LIKE CONCAT(#{followOrganizationCode}, '%') AND project.OrganizationCode &lt;&gt;
+            #{followOrganizationCode})
+        </if>
+        <if test="relationship != null and relationship.getValue().equals(2) and followOrganizationCode != null and followOrganizationCode.trim() != ''">
+            AND project.OrganizationCode LIKE CONCAT(#{followOrganizationCode}, '%')
+        </if>
+        <if test="relationship == null and followOrganizationCode != null and followOrganizationCode.trim() != ''">
+            AND project.OrganizationCode LIKE CONCAT(#{followOrganizationCode}, '%')
+        </if>
+        )
+        )
+        <choose>
+            <when test="orderBy != null and orderBy.trim() != ''">
+                ORDER BY ${orderBy}
+            </when>
+            <otherwise>
+                ORDER BY project.SortIndex DESC, project.SysNo DESC
+            </otherwise>
+        </choose>
+    </select>
