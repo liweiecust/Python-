@@ -38,4 +38,4 @@ class BestTest(HttpUser):
 
 if __name__ == "__main__":
     # os.system("py -m locust -f locust_run.py -H https://ibuildapi.yzw.cn -u 100 -r 10 --web-host=127.0.0.1")
-    os.system("py -m locust -f locust_run.py -H https://ibuildapi.yzw.cn --web-host=127.0.0.1")
+    os.system("py -m locust -f locust_run.py --web-host=127.0.0.1")
